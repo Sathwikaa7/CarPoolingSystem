@@ -3,7 +3,7 @@ import axios from 'axios';
 import io from 'socket.io-client';
 import {jwtDecode} from 'jwt-decode';
 
-function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop }) {
+function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop, autoStartType, onAutoStartConsumed }) {
   const [isSearching, setIsSearching] = useState(false);
   const [matches, setMatches] = useState([]);
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -18,9 +18,19 @@ function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop })
   const [newMessage, setNewMessage] = useState('');
   const [connectionEstablished, setConnectionEstablished] = useState(false);
   const [partnerApproved, setPartnerApproved] = useState(false);
+  const [partnerEndedMessage, setPartnerEndedMessage] = useState(null);
   const timerRef = useRef(null);
   const socketRef = useRef(null);
   const chatEndRef = useRef(null);
+
+  // Auto-start search when triggered from Dashboard booking buttons
+  useEffect(() => {
+    if (autoStartType && socketConnected && pickup && drop && pickupCoords && dropCoords && !isSearching) {
+      startSearch(autoStartType);
+      if (onAutoStartConsumed) onAutoStartConsumed();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStartType, socketConnected]);
 
   // Decode JWT to get current user ID
   useEffect(() => {
@@ -42,7 +52,7 @@ function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop })
     if (token && !socketRef.current) {
       console.log('🔌 Initializing socket connection...');
       
-      const newSocket = io('http://localhost:5001', {
+      const newSocket = io(process.env.REACT_APP_SOCKET_URL || 'http://localhost:5001', {
         auth: { token },
         transports: ['websocket', 'polling'],
         reconnection: true,
@@ -108,6 +118,18 @@ function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop })
         setChatMessages([]);
       });
 
+      newSocket.on('connection_ended', (data) => {
+        console.log("CONNECTION ENDED EVENT RECEIVED", data);
+        console.log('🔚 Connection ended by partner:', data);
+        setPartnerEndedMessage(`${data.userName} ended the connection`);
+        setConnectionEstablished(false);
+        setChatRoom(null);
+        setChatMessages([]);
+        setMatchFound(null);
+        setWaitingForApproval(false);
+        setPartnerApproved(false);
+      });
+
       newSocket.on('chat_message', (messageData) => {
         console.log('💬 Chat message received:', messageData);
         setChatMessages(prev => [...prev, messageData]);
@@ -163,6 +185,7 @@ function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop })
       setConnectionEstablished(false);
       setChatRoom(null);
       setChatMessages([]);
+      setPartnerEndedMessage(null);
 
       // Emit search to backend
       socket.emit('start_search', {
@@ -415,6 +438,22 @@ function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop })
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Partner ended connection banner */}
+      {partnerEndedMessage && (
+        <div className="mb-4 flex items-center justify-between bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+          <div className="flex items-center gap-2 text-red-700 text-sm font-medium">
+            <span>🔚</span>
+            <span>{partnerEndedMessage}</span>
+          </div>
+          <button
+            onClick={() => setPartnerEndedMessage(null)}
+            className="text-red-400 hover:text-red-600 text-lg leading-none"
+          >
+            ×
+          </button>
         </div>
       )}
 

@@ -419,6 +419,10 @@ class RealTimeMatchingService {
       // Update match status
       match.status = 'connected';
       match.chatRoomId = chatRoomId;
+      match.connectedUsers = [
+        match.user1.toString(),
+        match.user2.toString()
+      ];
 
       // Join both users to chat room
       this.io.to(`search_${match.user1}`).socketsJoin(chatRoomId);
@@ -609,6 +613,42 @@ class RealTimeMatchingService {
               Math.sin(dLng / 2) * Math.sin(dLng / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
+  }
+
+  /**
+   * End an active connection when a user leaves
+   * @param {string} userId - ID of the user ending the connection
+   */
+  async endConnection(userId) {
+    try {
+      for (const [matchId, match] of this.activeMatches.entries()) {
+        if (
+          match.status === 'connected' &&
+          (
+            match.user1.toString() === userId ||
+            match.user2.toString() === userId
+          )
+        ) {
+          const partnerId =
+            match.user1.toString() === userId
+              ? match.user2
+              : match.user1;
+
+          const user = await User.findById(userId);
+
+          console.log(`Sending connection_ended to search_${partnerId}`);
+          this.io.to(`search_${partnerId}`).emit('connection_ended', {
+            userName: user.name
+          });
+
+          this.activeMatches.delete(matchId);
+
+          break;
+        }
+      }
+    } catch (err) {
+      console.error('Error ending connection:', err);
+    }
   }
 
   /**

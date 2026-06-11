@@ -9,6 +9,23 @@ const mongoose = require("mongoose");
 // ----------------------------------------------------------
 // ROUTE FETCH (GOOGLE → OSRM fallback)
 // ----------------------------------------------------------
+
+// Decode a Google Maps encoded polyline into [[lng, lat], ...] pairs
+function decodePolyline(encoded) {
+  const coords = [];
+  let index = 0, lat = 0, lng = 0;
+  while (index < encoded.length) {
+    let b, shift = 0, result = 0;
+    do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+    shift = 0; result = 0;
+    do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+    coords.push([lng / 1e5, lat / 1e5]); // [lng, lat] to match GeoJSON / OSRM format
+  }
+  return coords;
+}
+
 router.post("/route", auth, async (req, res) => {
   try {
     const { start, end } = req.body;
@@ -17,36 +34,38 @@ router.post("/route", auth, async (req, res) => {
       return res.status(400).json({ msg: "Missing coordinates" });
     }
 
-    try {
-      const googleRes = await axios.post(
-        "https://routes.googleapis.com/directions/v2:computeRoutes",
-        {
-          origin: { location: { latLng: start } },
-          destination: { location: { latLng: end } },
-          travelMode: "DRIVE",
-          routingPreference: "TRAFFIC_AWARE",
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "X-Goog-Api-Key": process.env.GOOGLE_MAPS_API,
-            "X-Goog-FieldMask":
-              "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline",
+    if (process.env.GOOGLE_MAPS_API) {
+      try {
+        const googleRes = await axios.post(
+          "https://routes.googleapis.com/directions/v2:computeRoutes",
+          {
+            origin: { location: { latLng: start } },
+            destination: { location: { latLng: end } },
+            travelMode: "DRIVE",
+            routingPreference: "TRAFFIC_AWARE",
           },
-        }
-      );
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "X-Goog-Api-Key": process.env.GOOGLE_MAPS_API,
+              "X-Goog-FieldMask":
+                "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline",
+            },
+          }
+        );
 
-      const route = googleRes.data.routes[0];
+        const route = googleRes.data.routes[0];
+        // Decode Google's encoded polyline into [lng, lat] array — same format as OSRM
+        const coordinates = decodePolyline(route.polyline.encodedPolyline);
 
-      return res.json({
-        geometry: {
-          coordinates: route.polyline.encodedPolyline,
-        },
-        distance: route.distanceMeters,
-        duration: parseInt(route.duration.replace("s", "")),
-      });
-    } catch (e) {
-      console.log("Google Maps failed → Using OSRM");
+        return res.json({
+          geometry: { coordinates },
+          distance: route.distanceMeters,
+          duration: parseInt(route.duration.replace("s", "")),
+        });
+      } catch (e) {
+        console.log("Google Maps failed → Using OSRM");
+      }
     }
 
     const osrm = await axios.get(
@@ -176,6 +195,32 @@ router.put("/:id/complete", auth, async (req, res) => {
 });
 
 // ----------------------------------------------------------
+// CANCEL RIDE
+// ----------------------------------------------------------
+router.delete("/:id", auth, async (req, res) => {
+  try {
+    const ride = await Ride.findOne({
+      _id: req.params.id,
+      user: req.user.id
+    });
+
+    if (!ride) {
+      return res.status(404).json({ msg: "Ride not found" });
+    }
+
+    await ride.deleteOne();
+
+    console.log(`❌ Ride cancelled: ${ride._id}`);
+
+    res.json({ msg: "Ride cancelled successfully" });
+
+  } catch (err) {
+    console.error("Cancel ride error:", err);
+    res.status(500).json({ msg: "Failed to cancel ride" });
+  }
+});
+
+// ----------------------------------------------------------
 // FIND NEARBY RIDES (FOR MAP) - UPDATED WITH PICKUP + DROP MATCHING
 // ----------------------------------------------------------
 router.post("/find", auth, async (req, res) => {
@@ -227,59 +272,56 @@ router.post("/find", auth, async (req, res) => {
 });
 
 // ----------------------------------------------------------
-// CONNECT TO A RIDE (NEW ENDPOINT)
+// CONNECT TO A RIDE
 // ----------------------------------------------------------
 router.post("/connect", auth, async (req, res) => {
   try {
     const { rideId, message } = req.body;
 
-    if (!rideId || !message) {
-      return res.status(400).json({ msg: "Ride ID and message required" });
+    if (!rideId) {
+      return res.status(400).json({ msg: "Ride ID is required" });
     }
 
-    // Find the ride
     const ride = await Ride.findById(rideId).populate('user', 'name email');
-    
-    if (!ride) {
-      return res.status(404).json({ msg: "Ride not found" });
-    }
+    if (!ride) return res.status(404).json({ msg: "Ride not found" });
 
     if (ride.user._id.toString() === req.user.id) {
       return res.status(400).json({ msg: "Cannot connect to your own ride" });
     }
 
-    // Get current user details
+    if (!ride.isActive || ride.availableSeats <= 0) {
+      return res.status(400).json({ msg: "Ride is no longer available" });
+    }
+
+    const Connection = require("../models/Connection");
     const User = require("../models/User");
+
+    // Prevent duplicate pending requests
+    const existing = await Connection.findOne({
+      requester: req.user.id,
+      ride: rideId,
+      status: "pending",
+    });
+    if (existing) {
+      return res.status(400).json({ msg: "You already have a pending request for this ride" });
+    }
+
     const currentUser = await User.findById(req.user.id).select('name email');
 
-    // Here you would typically:
-    // 1. Create a connection/request record in database
-    // 2. Send notification to ride owner
-    // 3. Send email/SMS to both parties
-    
-    // For now, we'll simulate successful connection
-    console.log(`Connection request from ${currentUser.name} to ${ride.user.name}`);
-    console.log(`Message: ${message}`);
+    const connection = await Connection.create({
+      requester: req.user.id,
+      rideOwner: ride.user._id,
+      ride: rideId,
+      message: message || "",
+      status: "pending",
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    });
 
-    // In a real app, you'd store this connection request
-    // const connection = await Connection.create({
-    //   requester: req.user,
-    //   rideOwner: ride.user._id,
-    //   ride: rideId,
-    //   message,
-    //   status: 'pending'
-    // });
-
-    res.json({
+    res.status(201).json({
       message: "Connection request sent successfully",
-      rideOwner: {
-        name: ride.user.name,
-        email: ride.user.email // In production, only share after acceptance
-      },
-      requester: {
-        name: currentUser.name,
-        email: currentUser.email
-      }
+      connectionId: connection._id,
+      rideOwner: { name: ride.user.name },
+      requester: { name: currentUser.name, email: currentUser.email },
     });
 
   } catch (err) {

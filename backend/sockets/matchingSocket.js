@@ -96,12 +96,11 @@ function setupMatchingSocket(io) {
     // Handle stop search
     socket.on('stop_search', async () => {
       try {
-        console.log(`🛑 User ${socket.userId} stopping search`);
+        await matchingService.endConnection(socket.userId);
         await matchingService.handleUserDisconnect(socket.userId);
-        socket.emit('search_stopped', { message: 'Search stopped successfully' });
+        socket.emit('search_stopped', { message: 'Connection ended' });
       } catch (error) {
-        console.error('Error stopping search:', error);
-        socket.emit('search_error', { message: 'Failed to stop search: ' + error.message });
+        console.error(error);
       }
     });
 
