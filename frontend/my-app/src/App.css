@@ -1,0 +1,67 @@
+/* =========================
+   GLOBAL RESET
+========================= */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* =========================
+   FULL HEIGHT LAYOUT
+========================= */
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f8f9fa;
+}
+
+/* =========================
+   APP CONTAINER
+========================= */
+.App {
+  height: 100%;
+  width: 100%;
+}
+
+/* =========================
+   LEAFLET MAP FIX
+========================= */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  border-radius: 1.5rem;
+  z-index: 0;
+}
+
+/* =========================
+   FORM ELEMENTS
+========================= */
+input {
+  outline: none;
+  font-size: 0.95rem;
+}
+
+button {
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+/* =========================
+   OPTIONAL SMOOTH EFFECTS
+========================= */
+button:hover {
+  transform: scale(1.02);
+}
+
+/* =========================
+   REMOVE CRA DEFAULTS
+========================= */
+.App-logo,
+.App-header,
+.App-link {
+  display: none;
+}
