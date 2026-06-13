@@ -643,7 +643,7 @@ export default function Dashboard() {
         setRouteCoords([]);
         setDistance(null);
         setDuration(null);
-        setRideType(null);
+        //setRideType(null);
         setNearbyRides([]);
         setMatchedRides([]);
 
