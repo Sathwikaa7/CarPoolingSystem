@@ -10,15 +10,13 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-     const res = await axios.post(
+    const res = await axios.post(
   "https://carpoolingsystem-production-b904.up.railway.app/api/auth/login",
-  {
-    email,
-    password,
-  }
+  { email, password }
 );
-console.log("LOGIN RESPONSE:", res.data);
 
+console.log("LOGIN RESPONSE:", res.data);
+alert(JSON.stringify(res.data));
 const token = res.data?.token;
       
 
