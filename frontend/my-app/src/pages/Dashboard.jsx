@@ -327,7 +327,7 @@ export default function Dashboard() {
   const [routeCoords, setRouteCoords] = useState([]);
   const [distance, setDistance] = useState(null);
   const [duration, setDuration] = useState(null);
-  const [rideType, setRideType] = useState(null);
+  //const [rideType, setRideType] = useState(null);
   const [pendingRides, setPendingRides] = useState([]);
   const [nearbyRides, setNearbyRides] = useState([]);
   const [matchedRides, setMatchedRides] = useState([]);

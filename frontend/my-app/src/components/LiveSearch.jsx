@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+//import axios from 'axios';
 import io from 'socket.io-client';
 import {jwtDecode} from 'jwt-decode';
 
 function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop, autoStartType, onAutoStartConsumed }) {
   const [isSearching, setIsSearching] = useState(false);
-  const [matches, setMatches] = useState([]);
+  const [, setMatches] = useState([]);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [searchType, setSearchType] = useState(null);
   const [timeLeft, setTimeLeft] = useState(180); // 3 minutes
