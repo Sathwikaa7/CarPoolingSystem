@@ -11,11 +11,12 @@
     "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.9.2",
     "react-scripts": "^5.0.1",
+    "serve": "^14.2.6",
     "socket.io-client": "^4.8.3",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "serve -s build -l $PORT",
     "build": "CI=false react-scripts build",
     "eject": "react-scripts eject"
   },
