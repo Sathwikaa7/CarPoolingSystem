@@ -380,6 +380,27 @@ function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop, a
               Send
             </button>
           </div>
+
+          {searchType === 'poolCar' && (
+            <button
+              onClick={() => {
+                setChatMessages(prev => [...prev, {
+                  type: 'system',
+                  message: '🚗 Driver has started the ride!',
+                  timestamp: new Date()
+                }]);
+                if (socket && chatRoom) {
+                  socket.emit('send_chat_message', {
+                    chatRoomId: chatRoom,
+                    message: '🚗 Driver has started the ride!'
+                  });
+                }
+              }}
+              className="mt-3 w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-semibold text-sm transition"
+            >
+              🚗 Start Ride
+            </button>
+          )}
         </div>
       )}
 
