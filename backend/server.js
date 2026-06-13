@@ -12,13 +12,15 @@ const server = http.createServer(app);
 // Setup Socket.IO with CORS
 const io = socketIo(server, {
   cors: {
-    origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
+    origin: [
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "https://carpoolingsystem-production-b904.up.railway.app"
+    ],
     methods: ["GET", "POST"],
     credentials: true
-  },
-  allowEIO3: true
+  }
 });
-
 app.use(cors());
 app.use(express.json());
 

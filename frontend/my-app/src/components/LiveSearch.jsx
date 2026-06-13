@@ -52,7 +52,7 @@ function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop, a
     if (token && !socketRef.current) {
       console.log('🔌 Initializing socket connection...');
       
-      const newSocket = io(process.env.REACT_APP_SOCKET_URL || 'http://localhost:5001', {
+      const newSocket = io(process.env.REACT_APP_SOCKET_URL || 'https://carpoolingsystem-production-b904.up.railway.app', {
         auth: { token },
         transports: ['websocket', 'polling'],
         reconnection: true,
