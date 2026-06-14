@@ -288,12 +288,11 @@ function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop, a
     return (
       <div className="bg-gray-50 p-4 rounded-lg text-center">
         <p className="text-gray-600">Enter pickup and drop locations to start live search</p>
-        {socketConnected && (
-          <p className="text-xs text-green-600 mt-2">✅ Real-time connection ready</p>
-        )}
         {!socketConnected && (
-          <p className="text-xs text-red-600 mt-2">❌ Connection issue - check backend</p>
-        )}
+  <p className="text-xs text-yellow-600 mt-2">
+    ⏳ Connecting...
+  </p>
+)}
       </div>
     );
   }
