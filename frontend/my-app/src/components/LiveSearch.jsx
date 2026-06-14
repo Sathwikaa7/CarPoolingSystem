@@ -51,7 +51,7 @@ function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop, a
     const token = localStorage.getItem("token");
     if (token && !socketRef.current) {
       console.log('🔌 Initializing socket connection...');
-      
+
       const newSocket = io(process.env.REACT_APP_SOCKET_URL || 'https://carpoolingsystem-production-b904.up.railway.app', {
         auth: { token },
         transports: ['websocket', 'polling'],
@@ -60,13 +60,19 @@ function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop, a
         reconnectionDelay: 1000
       });
 
-      newSocket.on('connect', () => {
-        console.log('✅ Socket connected');
+      console.log("TOKEN:", token);
+
+      newSocket.on("connect", () => {
+        console.log("✅ SOCKET CONNECTED");
         setSocketConnected(true);
       });
 
-      newSocket.on('disconnect', () => {
-        console.log('❌ Socket disconnected');
+      newSocket.on("connect_error", (err) => {
+        console.log("❌ SOCKET CONNECT ERROR:", err.message);
+      });
+
+      newSocket.on("disconnect", (reason) => {
+        console.log("❌ SOCKET DISCONNECTED:", reason);
         setSocketConnected(false);
       });
 
@@ -77,17 +83,17 @@ function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop, a
       newSocket.on('instant_match_found', (matchData) => {
         console.log('⚡ Instant match found:', matchData);
         setMatchFound(matchData);
-        setWaitingForApproval(false); // Show approval buttons, not waiting state
+        setWaitingForApproval(false);
       });
 
       newSocket.on('partner_approved', (data) => {
         console.log('👍 Partner approved, waiting for your approval:', data);
-        setPartnerApproved(true); // Show that partner approved
+        setPartnerApproved(true);
       });
 
       newSocket.on('approval_sent', (data) => {
         console.log('⏳ Your approval sent, waiting for partner:', data);
-        setWaitingForApproval(true); // Now show waiting state
+        setWaitingForApproval(true);
       });
 
       newSocket.on('connection_established', (connectionData) => {
@@ -96,11 +102,9 @@ function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop, a
         setConnectionEstablished(true);
         setWaitingForApproval(false);
         setMatchFound(null);
-        
-        // Join the chat room
+
         newSocket.emit('join_chat_room', { chatRoomId: connectionData.chatRoomId });
-        
-        // Add welcome message
+
         setChatMessages([{
           type: 'system',
           message: `🎉 Connected with ${connectionData.partner.name}! You can now coordinate your ride.`,
@@ -187,7 +191,6 @@ function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop, a
       setChatMessages([]);
       setPartnerEndedMessage(null);
 
-      // Emit search to backend
       socket.emit('start_search', {
         pickup,
         drop,
@@ -196,7 +199,6 @@ function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop, a
         type
       });
 
-      // Start countdown timer
       timerRef.current = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
@@ -251,7 +253,6 @@ function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop, a
     if (socket && matchFound) {
       console.log('✅ Approving match:', matchFound.matchId);
       socket.emit('approve_match', { matchId: matchFound.matchId });
-      // Don't set waitingForApproval here - let the server response handle it
     }
   };
 
@@ -289,10 +290,10 @@ function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop, a
       <div className="bg-gray-50 p-4 rounded-lg text-center">
         <p className="text-gray-600">Enter pickup and drop locations to start live search</p>
         {!socketConnected && (
-  <p className="text-xs text-yellow-600 mt-2">
-    ⏳ Connecting...
-  </p>
-)}
+          <p className="text-xs text-yellow-600 mt-2">
+            ⏳ Connecting...
+          </p>
+        )}
       </div>
     );
   }
@@ -313,7 +314,7 @@ function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop, a
       {connectionEstablished && chatRoom && (
         <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
           <h4 className="font-semibold text-green-800 mb-3">💬 Chat with your ride partner</h4>
-          
+
           <div className="bg-white rounded border h-40 overflow-y-auto p-3 mb-3">
             {chatMessages.length === 0 ? (
               <div className="text-center text-gray-500 text-sm">
@@ -407,7 +408,7 @@ function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop, a
       {matchFound && !connectionEstablished && (
         <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <h4 className="font-semibold text-yellow-800 mb-3">⚡ Instant Match Found!</h4>
-          
+
           <div className="bg-white rounded border p-3 mb-4">
             <div className="flex items-center justify-between">
               <div>
@@ -482,7 +483,7 @@ function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop, a
           <p className="text-gray-600">
             Start a live search to find people actively looking for rides right now!
           </p>
-          
+
           <div className="flex gap-3">
             <button
               onClick={() => startSearch('findCar')}
@@ -499,7 +500,7 @@ function LiveSearch({ pickup, drop, pickupCoords, dropCoords, onMatch, onStop, a
               🚗 Pool a Ride
             </button>
           </div>
-          
+
           {!socketConnected && (
             <p className="text-xs text-red-600 text-center">
               Please wait for connection to be established
