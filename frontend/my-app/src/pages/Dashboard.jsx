@@ -357,20 +357,26 @@ export default function Dashboard() {
   };
 
   const fetchPendingRides = async () => {
-    try {
-      const res = await axios.get("/api/rides/my", {
-  headers: { Authorization: `Bearer ${token}` },
-});
-console.log("RIDES RESPONSE:", res.data);
-const pending = res.data
-      const pending = res.data
-        .filter((ride) => ride.status === "pending")
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      setPendingRides(pending);
-    } catch (err) {
-      console.error("Error fetching pending rides:", err);
-    }
-  };
+  try {
+    const token = localStorage.getItem("token");
+
+    const res = await axios.get("/api/rides/my", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    console.log("RIDES RESPONSE:", res.data);
+
+    const rides = Array.isArray(res.data) ? res.data : [];
+
+    const pending = rides
+      .filter((ride) => ride.status === "pending")
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    setPendingRides(pending);
+  } catch (err) {
+    console.error("Error fetching pending rides:", err);
+  }
+};
 
   // Enhanced route fetching
   const fetchRoute = async (start, end) => {
