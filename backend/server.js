@@ -34,6 +34,9 @@ app.use("/api/connections", connectionRoutes);
 app.use("/api/matching", matchingRoutes);
 
 // Setup Socket.IO for real-time matching
+io.on("connection", (socket) => {
+  console.log("SOCKET CONNECTED:", socket.id);
+});
 setupMatchingSocket(io);
 
 // Health check endpoint
