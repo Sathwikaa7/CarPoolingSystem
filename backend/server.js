@@ -12,11 +12,7 @@ const server = http.createServer(app);
 // Setup Socket.IO with CORS
 const io = socketIo(server, {
   cors: {
-    origin: [
-      "http://localhost:3000",
-      "http://127.0.0.1:3000",
-      "https://carpoolingsystem-production-b904.up.railway.app"
-    ],
+    origin: "*",
     methods: ["GET", "POST"],
     credentials: true
   }
