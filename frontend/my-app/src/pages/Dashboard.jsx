@@ -358,10 +358,11 @@ export default function Dashboard() {
 
   const fetchPendingRides = async () => {
     try {
-      const token = localStorage.getItem("token");
       const res = await axios.get("/api/rides/my", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+  headers: { Authorization: `Bearer ${token}` },
+});
+console.log("RIDES RESPONSE:", res.data);
+const pending = res.data
       const pending = res.data
         .filter((ride) => ride.status === "pending")
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
