@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
+const BASE_URL = "https://carpoolingsystem-production-b904.up.railway.app";
+
 function MyRides() {
   const [rides, setRides] = useState([]);
   const navigate = useNavigate();
@@ -9,10 +11,16 @@ function MyRides() {
   const fetchRides = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("/api/rides/my", {
+      const res = await axios.get(`${BASE_URL}/api/rides/my`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setRides(res.data);
+      setRides(
+        Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res.data.rides)
+          ? res.data.rides
+          : []
+      );
     } catch (err) {
       console.log(err);
     }
@@ -33,7 +41,7 @@ function MyRides() {
       const token = localStorage.getItem("token");
 
       await axios.put(
-        `/api/rides/${id}/complete`,
+        `${BASE_URL}/api/rides/${id}/complete`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -46,18 +54,16 @@ function MyRides() {
     }
   };
 
-  // ❌ Cancel ride (FIXED)
+  // ❌ Cancel ride
   const handleCancelRide = async (id) => {
     try {
       const token = localStorage.getItem("token");
 
-      await axios.delete(`/api/rides/${id}`, {
+      await axios.delete(`${BASE_URL}/api/rides/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       alert("Ride cancelled successfully");
-
-      // Refresh rides list
       fetchRides();
     } catch (err) {
       console.error("Cancel ride error:", err);
@@ -83,7 +89,9 @@ function MyRides() {
                 <p><strong>Drop:</strong> {ride.drop}</p>
                 <p>
                   <strong>Date:</strong>{" "}
-                  {new Date(ride.dateTime).toLocaleString()}
+                  {ride.dateTime
+                    ? new Date(ride.dateTime).toLocaleString()
+                    : "No date"}
                 </p>
                 <p className="mt-1">
                   <span
