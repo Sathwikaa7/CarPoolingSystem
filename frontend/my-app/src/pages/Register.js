@@ -8,34 +8,41 @@ function Register() {
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+ const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    try {
-      axios.post(
-  "https://carpoolingsystem-production-b904.up.railway.app/api/auth/register",
-  {
-    name,
-    email,
-    password
-  }
-);
-
-      if (res.status === 201) {
-        navigate("/login");
-        return;
+  try {
+    const res = await axios.post(
+      "https://carpoolingsystem-production-b904.up.railway.app/api/auth/register",
+      {
+        name,
+        email,
+        password,
       }
+    );
 
-      alert(res.data?.message || "Unexpected response from server");
-    } catch (err) {
-      const msg =
-        err.response?.data?.message ||
-        err.message ||
-        "Error registering user";
-      const details = err.response?.data?.details;
-      alert(details ? `${msg}: ${details}` : msg);
+    console.log("REGISTER RESPONSE:", res.data);
+
+    if (res.status === 200 || res.status === 201) {
+      alert("Registration successful!");
+      navigate("/login");
+      return;
     }
-  };
+
+    alert(res.data?.message || "Unexpected response from server");
+  } catch (err) {
+    console.error("Register Error:", err);
+
+    const msg =
+      err.response?.data?.message ||
+      err.message ||
+      "Error registering user";
+
+    const details = err.response?.data?.details;
+
+    alert(details ? `${msg}: ${details}` : msg);
+  }
+};
 
   return (
     <div style={styles.container}>
