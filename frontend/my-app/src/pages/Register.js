@@ -12,11 +12,14 @@ function Register() {
     e.preventDefault();
 
     try {
-      const res = await axios.post("/api/auth/register", {
-        name,
-        email,
-        password,
-      });
+      axios.post(
+  "https://carpoolingsystem-production-b904.up.railway.app/api/auth/register",
+  {
+    name,
+    email,
+    password
+  }
+);
 
       if (res.status === 201) {
         navigate("/login");

@@ -9,25 +9,32 @@ function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-    const res = await axios.post(
-  "https://carpoolingsystem-production-b904.up.railway.app/api/auth/login",
-  { email, password }
-);
 
-console.log("LOGIN RESPONSE:", res.data);
-alert(JSON.stringify(res.data));
-const token = res.data?.token;
-      
+    try {
+      const res = await axios.post(
+        "https://carpoolingsystem-production-b904.up.railway.app/api/auth/login",
+        { email, password }
+      );
+
+      console.log("LOGIN RESPONSE:", res.data);
+
+      const token = res.data?.token;
 
       if (token) {
         localStorage.setItem("token", token);
         navigate("/dashboard");
         return;
       }
-      alert(res.data?.message || "Unexpected response");
+
+      alert(res.data?.message || "Unexpected response from server");
     } catch (err) {
-      alert(err.response?.data?.message || "Login failed");
+      console.error("Login Error:", err);
+
+      alert(
+        err.response?.data?.message ||
+        err.message ||
+        "Login failed"
+      );
     }
   };
 
@@ -61,7 +68,6 @@ const token = res.data?.token;
           </button>
         </form>
 
-        {/* Register Link */}
         <p style={styles.registerText}>
           No account?{" "}
           <span
