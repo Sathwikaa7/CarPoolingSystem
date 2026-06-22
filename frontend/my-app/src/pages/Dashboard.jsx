@@ -14,6 +14,8 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
+const BASE_URL = "https://carpoolingsystem-production-b904.up.railway.app";
+
 // Custom icons for pickup and drop
 const pickupIcon = new L.Icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
@@ -327,7 +329,6 @@ export default function Dashboard() {
   const [routeCoords, setRouteCoords] = useState([]);
   const [distance, setDistance] = useState(null);
   const [duration, setDuration] = useState(null);
-  //const [rideType, setRideType] = useState(null);
   const [pendingRides, setPendingRides] = useState([]);
   const [nearbyRides, setNearbyRides] = useState([]);
   const [matchedRides, setMatchedRides] = useState([]);
@@ -339,10 +340,11 @@ export default function Dashboard() {
     if (!token) return navigate("/login");
 
     axios
-      .get("/api/users/me", {
+      .get(`${BASE_URL}/api/users/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      .then((res) => setUserData(res.data));
+      .then((res) => setUserData(res.data))
+      .catch((err) => console.error("User fetch error:", err));
 
     fetchStats();
     fetchPendingRides();
@@ -350,33 +352,43 @@ export default function Dashboard() {
 
   const fetchStats = async () => {
     const token = localStorage.getItem("token");
-    const res = await axios.get("/api/rides/stats", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await axios.get(
+      `${BASE_URL}/api/rides/stats`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
     setStats(res.data);
   };
 
   const fetchPendingRides = async () => {
-  try {
-    const token = localStorage.getItem("token");
+    try {
+      const token = localStorage.getItem("token");
 
-    const res = await axios.get("/api/rides/my", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+      const res = await axios.get(
+        `${BASE_URL}/api/rides/my`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
-    console.log("RIDES RESPONSE:", res.data);
+      console.log("RIDES RESPONSE:", res.data);
 
-    const rides = Array.isArray(res.data) ? res.data : [];
+      const rides = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data.rides)
+        ? res.data.rides
+        : [];
 
-    const pending = rides
-      .filter((ride) => ride.status === "pending")
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const pending = rides
+        .filter((ride) => ride.status === "pending")
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    setPendingRides(pending);
-  } catch (err) {
-    console.error("Error fetching pending rides:", err);
-  }
-};
+      setPendingRides(pending);
+    } catch (err) {
+      console.error("Error fetching pending rides:", err);
+    }
+  };
 
   // Enhanced route fetching
   const fetchRoute = async (start, end) => {
@@ -385,7 +397,7 @@ export default function Dashboard() {
 
       try {
         const res = await axios.post(
-          "/api/rides/route",
+          `${BASE_URL}/api/rides/route`,
           { start, end },
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -446,11 +458,11 @@ export default function Dashboard() {
     try {
       const token = localStorage.getItem("token");
       const res = await axios.post(
-        "/api/rides/find",
+        `${BASE_URL}/api/rides/find`,
         {
           lat: pickupCoords.lat,
           lng: pickupCoords.lng,
-          drop: drop, // Send drop location for better matching
+          drop: drop,
         },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -474,7 +486,7 @@ export default function Dashboard() {
         const matches = ridesWithDistance.filter(ride => {
           const dropSimilarity = ride.drop.toLowerCase().includes(drop.toLowerCase()) ||
             drop.toLowerCase().includes(ride.drop.toLowerCase());
-          const isClose = parseFloat(ride.distance) <= 5; // Within 5km
+          const isClose = parseFloat(ride.distance) <= 5;
           const notDismissed = !dismissedRides.includes(ride._id);
 
           return dropSimilarity && isClose && notDismissed;
@@ -499,9 +511,8 @@ export default function Dashboard() {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
-          
+
           try {
-            // Reverse geocode to get address
             const response = await fetch(
               `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
               {
@@ -511,18 +522,16 @@ export default function Dashboard() {
                 }
               }
             );
-            
+
             if (response.ok) {
               const data = await response.json();
               setPickup(data.display_name);
               setPickupCoords({ lat: latitude, lng: longitude });
             } else {
-              // Fallback if reverse geocoding fails
               setPickup(`Current Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
               setPickupCoords({ lat: latitude, lng: longitude });
             }
           } catch (error) {
-            // Fallback if API fails
             setPickup(`Current Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
             setPickupCoords({ lat: latitude, lng: longitude });
           }
@@ -533,7 +542,7 @@ export default function Dashboard() {
         {
           enableHighAccuracy: true,
           timeout: 10000,
-          maximumAge: 300000 // 5 minutes
+          maximumAge: 300000
         }
       );
     } else {
@@ -541,7 +550,6 @@ export default function Dashboard() {
     }
   };
 
-  // Handle pickup location selection
   const handlePickupSelect = (locationData) => {
     setPickupCoords({
       lat: locationData.lat,
@@ -549,7 +557,6 @@ export default function Dashboard() {
     });
   };
 
-  // Handle drop location selection  
   const handleDropSelect = (locationData) => {
     setDropCoords({
       lat: locationData.lat,
@@ -562,9 +569,8 @@ export default function Dashboard() {
     try {
       const token = localStorage.getItem("token");
 
-      // Create a connection request
       await axios.post(
-        "/api/rides/connect",
+        `${BASE_URL}/api/rides/connect`,
         {
           rideId: ride._id,
           message: `Hi! I'd like to join your ride from ${ride.pickup} to ${ride.drop}. My pickup is at ${pickup}.`
@@ -575,8 +581,6 @@ export default function Dashboard() {
       );
 
       alert(`Connection request sent to ${ride.user?.name || 'driver'}! They will be notified and can share contact details.`);
-
-      // Remove from matched rides
       setMatchedRides(prev => prev.filter(r => r._id !== ride._id));
 
     } catch (err) {
@@ -585,13 +589,11 @@ export default function Dashboard() {
     }
   };
 
-  // Handle dismissing a ride match
   const handleDismissRide = (rideId) => {
     setDismissedRides(prev => [...prev, rideId]);
     setMatchedRides(prev => prev.filter(r => r._id !== rideId));
   };
 
-  // Handle booking - Updated to integrate with LiveSearch
   const handleBooking = async (type) => {
     if (!pickup || !drop) {
       alert("Please fill in pickup and drop locations");
@@ -617,17 +619,15 @@ export default function Dashboard() {
         return;
       }
 
-      // For scheduled rides, create a regular ride in database
       try {
         const token = localStorage.getItem("token");
-        const rideDateTime = dateTime;
 
         await axios.post(
-          "/api/rides/book",
+          `${BASE_URL}/api/rides/book`,
           {
             pickup,
             drop,
-            dateTime: rideDateTime,
+            dateTime,
             type,
             isScheduled,
             pickupCoords,
@@ -640,7 +640,6 @@ export default function Dashboard() {
 
         alert(`Ride scheduled successfully for ${new Date(dateTime).toLocaleString()}!`);
 
-        // Reset form
         setPickup("");
         setDrop("");
         setDateTime("");
@@ -650,7 +649,6 @@ export default function Dashboard() {
         setRouteCoords([]);
         setDistance(null);
         setDuration(null);
-        //setRideType(null);
         setNearbyRides([]);
         setMatchedRides([]);
 
@@ -661,10 +659,8 @@ export default function Dashboard() {
         alert(err.response?.data?.message || "Failed to book ride");
       }
     } else {
-      // For immediate rides, don't create a database entry - let LiveSearch handle it
       alert(`Starting live search for ${type === "poolCar" ? "pooling a ride" : "finding a car"}. Use the Live Search section below to find matches!`);
-      
-      // Scroll to LiveSearch component
+
       const liveSearchElement = document.querySelector('[data-component="live-search"]');
       if (liveSearchElement) {
         liveSearchElement.scrollIntoView({ behavior: 'smooth' });
@@ -672,12 +668,11 @@ export default function Dashboard() {
     }
   };
 
-  // Handle ending a ride
   const handleEndRide = async (rideId) => {
     try {
       const token = localStorage.getItem("token");
       await axios.put(
-        `/api/rides/${rideId}/complete`,
+        `${BASE_URL}/api/rides/${rideId}/complete`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -711,7 +706,7 @@ export default function Dashboard() {
 
       {/* MAIN */}
       <main className="flex-1 p-10 space-y-6">
-        <h1 className="text-3xl font-bold">Welcome {userData?.name}</h1>
+        <h1 className="text-3xl font-bold">Welcome {userData?.name || userData?.user?.name || ""}</h1>
 
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-blue-600 text-white p-4 rounded">
@@ -790,7 +785,6 @@ export default function Dashboard() {
             >
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
-              {/* User's pickup location */}
               {pickupCoords && (
                 <Marker position={pickupCoords} icon={pickupIcon}>
                   <Popup>
@@ -802,7 +796,6 @@ export default function Dashboard() {
                 </Marker>
               )}
 
-              {/* User's drop location */}
               {dropCoords && (
                 <Marker position={dropCoords} icon={dropIcon}>
                   <Popup>
@@ -814,7 +807,6 @@ export default function Dashboard() {
                 </Marker>
               )}
 
-              {/* Available nearby rides */}
               {nearbyRides.map((ride) => (
                 <Marker
                   key={ride._id}
@@ -850,7 +842,6 @@ export default function Dashboard() {
                 </Marker>
               ))}
 
-              {/* Route visualization */}
               {routeCoords.length > 0 && (
                 <>
                   <Polyline
@@ -869,7 +860,6 @@ export default function Dashboard() {
           </div>
 
           <div className="w-96 bg-white p-6 rounded shadow space-y-4">
-            {/* Nearby rides info */}
             {nearbyRides.length > 0 && (
               <div className="bg-blue-50 p-3 rounded-md border border-blue-200">
                 <p className="text-sm text-blue-700 text-center">
@@ -956,7 +946,6 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Route Info */}
             {distance && duration && (
               <div className="bg-green-50 p-3 rounded-md border border-green-200">
                 <p className="text-sm text-green-700">
@@ -968,7 +957,6 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Booking Buttons */}
             <div className="space-y-3">
               <button
                 onClick={() => handleBooking("poolCar")}
@@ -984,7 +972,6 @@ export default function Dashboard() {
               </button>
             </div>
 
-            {/* Live Search Component */}
             <div data-component="live-search">
               <LiveSearch
                 pickup={pickup}
